@@ -5,20 +5,37 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 )
+
+const tempPath = "/Users/Brendan/Documents/go/src/github.com/BKellogg/DistributedLoadTester/apps/helloworld/helloworld"
 
 func main() {
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
 		log.Fatalf("error dialing connection: %v", err)
 	}
-	_, err = conn.Write([]byte("hello world!"))
+
+	f, err := readFile(tempPath)
 	if err != nil {
-		log.Fatalf("error writing bytes: %v", err)
+		log.Fatalf("error reading file: %v", err)
 	}
+	defer f.Close()
+
+	numBytes, err := io.Copy(conn, f)
+	if err != nil {
+		log.Fatalf("error copying bytes into connection: %v", err)
+	}
+	log.Printf("copied %d bytes into the connection", numBytes)
+	f.Close()
+
 	if err = printFromConnection(conn); err != nil {
 		log.Fatalf("error printing from connection: %v", err)
 	}
+}
+
+func readFile(path string) (*os.File, error) {
+	return os.Open(path)
 }
 
 // printFromConnection reads and prints all messages from the connection
