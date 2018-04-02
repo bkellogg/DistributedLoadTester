@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -21,11 +23,29 @@ func main() {
 		log.Fatalf("error reading file: %v", err)
 	}
 	defer f.Close()
+	stats, _ := f.Stat()
 
-	numBytes, err := io.Copy(conn, f)
+	sizeOfFileAsByteSlice := make([]byte, 8)
+	binary.LittleEndian.PutUint64(sizeOfFileAsByteSlice, uint64(stats.Size()))
+
+	fmt.Printf("file is %d bytes\n", stats.Size())
+
+	// with the first 8 bytes, write the size of the file that will be coming
+	conn.Write(sizeOfFileAsByteSlice)
+
+	fileBytes, err := ioutil.ReadAll(f)
 	if err != nil {
-		log.Fatalf("error copying bytes into connection: %v", err)
+		log.Fatalf("error reading all file bytes: %v", err)
 	}
+	numBytes, err := conn.Write(fileBytes)
+	if err != nil {
+		log.Fatalf("error writing file to connection: %v", err)
+	}
+
+	// numBytes, err := io.Copy(conn, f)
+	// if err != nil {
+	// 	log.Fatalf("error copying bytes into connection: %v", err)
+	// }
 	log.Printf("copied %d bytes into the connection", numBytes)
 	f.Close()
 

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -16,40 +18,61 @@ func ExecutableHandler(conn net.Conn) error {
 	defer conn.Close()
 	log.Printf("received connection from %s", conn.RemoteAddr().String())
 
-	conn.Write([]byte(fmt.Sprintf("connection recieved. creating file...\n")))
+	status := fmt.Sprintf("connection recieved. creating file...\n")
+	writeStatus(status, conn)
 
 	f, err := os.OpenFile(tempPath+"/command", os.O_WRONLY|os.O_CREATE, 0744)
 	if err != nil {
 		errMsg := fmt.Sprintf("error creating file: %v", err)
-		conn.Write([]byte(errMsg))
+		writeStatus(errMsg, conn)
 		return errors.New(errMsg)
 	}
 	defer f.Close()
 
-	conn.Write([]byte(fmt.Sprintf("copying request bytes into file...\n")))
+	status = "reading size of forthcoming file..."
+	writeStatus(status, conn)
 
-	fmt.Println("copying bytes into file")
-	numBytes, err := io.Copy(f, conn)
+	fileSizeBytes := make([]byte, 8)
+
+	connReader := conn.(io.ReadCloser)
+	_, err = connReader.Read(fileSizeBytes)
 	if err != nil {
-		fmt.Println("error while copying: " + err.Error())
-		errMsg := fmt.Sprintf("error writing to file: %v", err)
-		conn.Write([]byte(errMsg))
+		errMsg := fmt.Sprintf("error reading filesize: %v", err)
+		writeStatus(errMsg, conn)
 		return errors.New(errMsg)
 	}
-	fmt.Println("dont copying bytes into file")
-	conn.Write([]byte(fmt.Sprintf("wrote %d bytes to file", numBytes)))
 
-	// cmd := exec.Command(tempPath + "/command")
-	// err = cmd.Run()
-	// if err != nil {
-	// 	errMsg := fmt.Sprintf("error executing command: %v", err)
-	// 	conn.Write([]byte(errMsg))
-	// 	return errors.New(errMsg)
-	// }
+	fileSize := int64(binary.LittleEndian.Uint64(fileSizeBytes))
+	status = fmt.Sprintf("%d bytes\n", fileSize)
+	writeStatus(status, conn)
+
+	status = fmt.Sprintf("reading request bytes into memory...\n")
+	writeStatus(status, conn)
+
+	fileBytes := make([]byte, fileSize)
+	numBytes, err := connReader.Read(fileBytes)
+	if err != nil {
+		errMsg := fmt.Sprintf("error reading file bytes: %v", err)
+		writeStatus(errMsg, conn)
+		return errors.New(errMsg)
+	}
+
+	writeStatus(fmt.Sprintf("read %d bytes into memory", numBytes), conn)
+
+	fileBytesReader := bytes.NewReader(fileBytes)
+	io.Copy(f, fileBytesReader)
+
+	status = fmt.Sprintf("wrote %d bytes to file", numBytes)
+	writeStatus(status, conn)
 
 	_, err = conn.Write([]byte("success!"))
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func writeStatus(status string, conn net.Conn) {
+	conn.Write([]byte(status))
+	log.Println(status)
 }
