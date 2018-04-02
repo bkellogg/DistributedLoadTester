@@ -5,8 +5,9 @@ import (
 	"net"
 )
 
-// ConnectionHandler handles connections
-func ConnectionHandler(conn net.Conn) error {
+// PingHandler handles simple request/response
+// connections.
+func PingHandler(conn net.Conn) error {
 	defer conn.Close()
 	log.Printf("received connection from %s", conn.RemoteAddr().String())
 	messageBytes := make([]byte, 1000)
