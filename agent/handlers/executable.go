@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -15,66 +14,87 @@ const tempPath = "/Users/Brendan/Documents/go/src/github.com/BKellogg/Distribute
 
 // ExecutableHandler handles executables
 func ExecutableHandler(conn net.Conn) error {
+	// Make sure the connection is not nil
+	// since this will cause many things to
+	// panic if this is the case.
+	if conn == nil {
+		return errors.New("connection must not be nil")
+	}
+
+	// close the connection when we're done with it
 	defer conn.Close()
-	log.Println("========================")
-	log.Printf("received connection from %s", conn.RemoteAddr().String())
 
-	status := fmt.Sprintf("connection recieved. creating file...\n")
-	writeStatus(status, conn)
+	// write some status messages to standard out and to the connection
+	// so we can more easily track what is happening.
+	log.Printf("received connection from %s\n", conn.RemoteAddr().String())
+	write(fmt.Sprintf("connection recieved. saving request bytes as a file...\n"), conn)
 
-	// create the file that the executable will be written into
+	// Open or create the file that the bytes will be written to.
+	// Assign the executable permission to the file to the current user.
+	// This is done with the "0744" argument.
 	f, err := os.OpenFile(tempPath+"/command", os.O_WRONLY|os.O_CREATE, 0744)
 	if err != nil {
-		errMsg := fmt.Sprintf("error creating file: %v", err)
-		writeStatus(errMsg, conn)
-		return errors.New(errMsg)
+		errMsg := fmt.Sprintf("error creating file: %v\n", err)
+		return write(errMsg, conn)
 	}
 	defer f.Close()
 
-	status = "reading size of forthcoming file..."
-	writeStatus(status, conn)
-
-	// get the size of the executable from the first 8 bytes
-	fileSizeBytes := make([]byte, 8)
-	connReader := conn.(io.ReadCloser)
-	_, err = connReader.Read(fileSizeBytes)
+	// Get the filesize from the connection.
+	// This is done by reading the first 8 bytes
+	// into an int64.
+	fileSize, err := int64FromConn(conn)
 	if err != nil {
-		errMsg := fmt.Sprintf("error reading filesize: %v", err)
-		writeStatus(errMsg, conn)
-		return errors.New(errMsg)
+		errMsg := fmt.Sprintf("error gettig int64 from conn: %s\n", err)
+		return write(errMsg, conn)
 	}
 
-	// convert the first 8 bytes into an int64
-	fileSize := int64(binary.LittleEndian.Uint64(fileSizeBytes))
-	status = fmt.Sprintf("%d bytes\n", fileSize)
-	writeStatus(status, conn)
+	// Since io.Copy has no way of knowing when to stop reading
+	// we make a temp byte slice that of exactly how many bytes we need
+	// so io.Copy will stop when this slice is full.
+	tempBytes := make([]byte, fileSize)
 
-	status = fmt.Sprintf("reading request bytes into memory...\n")
-	writeStatus(status, conn)
-
-	// make a []byte of the size of the executable and read
-	// from the connection into it
-	fileBytes := make([]byte, fileSize)
-	numBytes, err := conn.Read(fileBytes)
+	// Read the contents of the conn until the tempBytes
+	// slice is full. Since the tempBytes slice was created
+	// with the exact size as specifiied in the first bytes
+	// of the connection it will contain exactly enough room
+	// for the file.
+	_, err = io.ReadFull(conn, tempBytes)
 	if err != nil {
-		errMsg := fmt.Sprintf("error reading file bytes: %v", err)
-		writeStatus(errMsg, conn)
-		return errors.New(errMsg)
+		errMsg := fmt.Sprintf("error writing to temp storage: %v\n", err)
+		return write(errMsg, conn)
 	}
-	writeStatus(fmt.Sprintf("read %d bytes into memory", numBytes), conn)
 
-	// read the bytes from the in memory byte slice into
-	// the file.
-	fileBytesReader := bytes.NewReader(fileBytes)
-	io.Copy(f, fileBytesReader)
-	status = fmt.Sprintf("wrote %d bytes to file", numBytes)
-	writeStatus(status, conn)
-
-	_, err = conn.Write([]byte("success!"))
+	// Write the contents of the tempBytes slice
+	// into the file. Size this slice contains the
+	// bytes of the file the client sent to us, the
+	// file on the local machine will be the file that
+	// the client sent to us.
+	_, err = f.Write(tempBytes)
 	if err != nil {
-		return err
+		errMsg := fmt.Sprintf("error writing to temp storage: %v\n", err)
+		return write(errMsg, conn)
 	}
-	return nil
+
+	// write a success message and return the error if
+	// one occurred
+	return write("success!", conn)
+}
+
+// write writes the given message to standard out, the connection
+// given and returns the message as an error
+func write(msg string, conn net.Conn) error {
+	log.Print(msg)
+	conn.Write([]byte(msg))
+	return errors.New(msg)
+}
+
+// int64FromConn reads the first 8 bytes of the connection
+// into an int64 and returns it. Assumes that the first 8 bytes represent a
+// valid int64. Returns an error if one occurred.
+func int64FromConn(conn net.Conn) (int64, error) {
+	var size int64
+	err := binary.Read(conn, binary.LittleEndian, &size)
+	return size, err
 }
 
 func writeStatus(status string, conn net.Conn) {

@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -13,33 +12,37 @@ import (
 const tempPath = "/Users/Brendan/Documents/go/src/github.com/BKellogg/DistributedLoadTester/apps/helloworld/helloworld"
 
 func main() {
+	// Dial the agent process and get the connection
+	// so we can send information to it.
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
 		log.Fatalf("error dialing connection: %v", err)
 	}
+	defer conn.Close()
 
-	f, err := readFile(tempPath)
+	// Ppen the file that we are going to be
+	// sending the connection that we just opened.
+	f, err := os.Open(tempPath)
 	if err != nil {
 		log.Fatalf("error reading file: %v", err)
 	}
 	defer f.Close()
-	stats, _ := f.Stat()
 
-	sizeOfFileAsByteSlice := make([]byte, 8)
-	binary.LittleEndian.PutUint64(sizeOfFileAsByteSlice, uint64(stats.Size()))
+	// Get the size of the file in bytes and then write those
+	// to the connection so the agent process knows how many
+	// bytes to read into the file on its end.
+	stat, _ := f.Stat()
+	err = binary.Write(conn, binary.LittleEndian, stat.Size())
+	if err != nil {
+		log.Fatalf("error writing filesize %s", err)
+	}
 
-	fmt.Printf("file is %d bytes\n", stats.Size())
-
-	// with the first 8 bytes, write the size of the file that will be coming
-	conn.Write(sizeOfFileAsByteSlice)
-
-	fileBytes, err := ioutil.ReadAll(f)
+	// Copy the bytes of the file into the connection
+	// since the file as a source has a definite end
+	// this will not block indefitely
+	numBytes, err := io.Copy(conn, f)
 	if err != nil {
 		log.Fatalf("error reading all file bytes: %v", err)
-	}
-	numBytes, err := conn.Write(fileBytes)
-	if err != nil {
-		log.Fatalf("error writing file to connection: %v", err)
 	}
 
 	// numBytes, err := io.Copy(conn, f)
@@ -49,13 +52,10 @@ func main() {
 	log.Printf("copied %d bytes into the connection", numBytes)
 	f.Close()
 
+	// Read from the conneciton until the connection closes.
 	if err = printFromConnection(conn); err != nil {
 		log.Fatalf("error printing from connection: %v", err)
 	}
-}
-
-func readFile(path string) (*os.File, error) {
-	return os.Open(path)
 }
 
 // printFromConnection reads and prints all messages from the connection
