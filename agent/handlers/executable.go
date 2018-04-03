@@ -96,3 +96,8 @@ func int64FromConn(conn net.Conn) (int64, error) {
 	err := binary.Read(conn, binary.LittleEndian, &size)
 	return size, err
 }
+
+func writeStatus(status string, conn net.Conn) {
+	conn.Write([]byte(status))
+	log.Println(status)
+}

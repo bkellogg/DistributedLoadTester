@@ -42,8 +42,13 @@ func main() {
 	// this will not block indefitely
 	numBytes, err := io.Copy(conn, f)
 	if err != nil {
-		log.Fatalf("error copying bytes into connection: %v", err)
+		log.Fatalf("error reading all file bytes: %v", err)
 	}
+
+	// numBytes, err := io.Copy(conn, f)
+	// if err != nil {
+	// 	log.Fatalf("error copying bytes into connection: %v", err)
+	// }
 	log.Printf("copied %d bytes into the connection", numBytes)
 	f.Close()
 
