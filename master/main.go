@@ -7,11 +7,14 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 )
 
 const tempPath = "/Users/Brendan/Documents/go/src/github.com/BKellogg/DistributedLoadTester/apps/helloworld/helloworld"
 
 func main() {
+	filePath, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+	fmt.Println(filePath)
 	// Dial the agent process and get the connection
 	// so we can send information to it.
 	conn, err := net.Dial("tcp", "localhost:8080")

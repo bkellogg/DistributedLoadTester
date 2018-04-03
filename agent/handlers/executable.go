@@ -8,9 +8,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 )
-
-const tempPath = "/Users/Brendan/Documents/go/src/github.com/BKellogg/DistributedLoadTester/agent"
 
 // ExecutableHandler handles executables
 func ExecutableHandler(conn net.Conn) error {
@@ -32,7 +31,7 @@ func ExecutableHandler(conn net.Conn) error {
 	// Open or create the file that the bytes will be written to.
 	// Assign the executable permission to the file to the current user.
 	// This is done with the "0744" argument.
-	f, err := os.OpenFile(tempPath+"/command", os.O_WRONLY|os.O_CREATE, 0744)
+	f, err := os.OpenFile(currentDir()+"/command", os.O_WRONLY|os.O_CREATE, 0744)
 	if err != nil {
 		errMsg := fmt.Sprintf("error creating file: %v\n", err)
 		return write(errMsg, conn)
@@ -97,7 +96,9 @@ func int64FromConn(conn net.Conn) (int64, error) {
 	return size, err
 }
 
-func writeStatus(status string, conn net.Conn) {
-	conn.Write([]byte(status))
-	log.Println(status)
+// currentDir returns the directory that the application
+// is being exucuted in
+func currentDir() string {
+	dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+	return dir
 }
