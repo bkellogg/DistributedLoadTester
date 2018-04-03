@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -28,10 +29,12 @@ func ExecutableHandler(conn net.Conn) error {
 	log.Printf("received connection from %s\n", conn.RemoteAddr().String())
 	write(fmt.Sprintf("connection recieved. saving request bytes as a file...\n"), conn)
 
+	fp := currentDir() + "/command"
+
 	// Open or create the file that the bytes will be written to.
 	// Assign the executable permission to the file to the current user.
 	// This is done with the "0744" argument.
-	f, err := os.OpenFile(currentDir()+"/command", os.O_WRONLY|os.O_CREATE, 0744)
+	f, err := os.OpenFile(fp, os.O_WRONLY|os.O_CREATE, 0744)
 	if err != nil {
 		errMsg := fmt.Sprintf("error creating file: %v\n", err)
 		return write(errMsg, conn)
@@ -73,6 +76,15 @@ func ExecutableHandler(conn net.Conn) error {
 		errMsg := fmt.Sprintf("error writing to temp storage: %v\n", err)
 		return write(errMsg, conn)
 	}
+
+	// Executre the file at the "fp" path
+	// and write its output back to the client.
+	cmd := exec.Command(fp)
+	output, err := cmd.Output()
+	if err != nil {
+		return write(fmt.Sprintf("error getting program output: %v\n", err), conn)
+	}
+	write(fmt.Sprintf("application output:\n\n%s", string(output)), conn)
 
 	// write a success message and return the error if
 	// one occurred

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-const tempPath = "/Users/Brendan/Documents/go/src/github.com/BKellogg/DistributedLoadTester/apps/helloworld/helloworld"
+const tempPath = "/Users/Brendan/Documents/go/src/github.com/BKellogg/DistributedLoadTester/apps/newuser/newuser"
 
 func main() {
 	filePath, _ := filepath.Abs(filepath.Dir(os.Args[0]))
