@@ -9,7 +9,8 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"path/filepath"
+
+	"github.com/BKellogg/DistributedLoadTester/shared/dir"
 )
 
 // ExecutableHandler handles executables
@@ -29,7 +30,7 @@ func ExecutableHandler(conn net.Conn) error {
 	log.Printf("received connection from %s\n", conn.RemoteAddr().String())
 	write(fmt.Sprintf("Connection recieved. Processing request...\n"), conn)
 
-	fp := currentDir() + "/command"
+	fp := dir.CurrentDir() + "/command"
 
 	// Open or create the file that the bytes will be written to.
 	// Assign the executable permission to the file to the current user.
@@ -114,11 +115,4 @@ func int64FromConn(conn net.Conn) (int64, error) {
 	var size int64
 	err := binary.Read(conn, binary.LittleEndian, &size)
 	return size, err
-}
-
-// currentDir returns the directory that the application
-// is being exucuted in
-func currentDir() string {
-	dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
-	return dir
 }
