@@ -10,14 +10,24 @@ import (
 	"path/filepath"
 )
 
-const tempPath = "/Users/Brendan/Documents/go/src/github.com/BKellogg/DistributedLoadTester/apps/newuser/newuser"
+// const poorSucker = "172.28.102.87:8080"
+
+const poorSucker = "localhost:8080"
 
 func main() {
-	filePath, _ := filepath.Abs(filepath.Dir(os.Args[0]))
-	fmt.Println(filePath)
+
+	if len(os.Args) < 2 {
+		log.Fatal(`usage:
+			master <app_path>`)
+	}
+	appPath := os.Args[1]
+	fullPath, err := filepath.Abs(appPath)
+	if err != nil {
+		log.Fatalf("error getting absolute path: %v", err)
+	}
 	// Dial the agent process and get the connection
 	// so we can send information to it.
-	conn, err := net.Dial("tcp", "localhost:8080")
+	conn, err := net.Dial("tcp", poorSucker)
 	if err != nil {
 		log.Fatalf("error dialing connection: %v", err)
 	}
@@ -25,7 +35,7 @@ func main() {
 
 	// Ppen the file that we are going to be
 	// sending the connection that we just opened.
-	f, err := os.Open(tempPath)
+	f, err := os.Open(fullPath)
 	if err != nil {
 		log.Fatalf("error reading file: %v", err)
 	}
@@ -56,30 +66,21 @@ func main() {
 	f.Close()
 
 	// Read from the conneciton until the connection closes.
-	if err = printFromConnection(conn); err != nil {
+	if err = copyFromConnIntoStdOut(conn); err != nil {
 		log.Fatalf("error printing from connection: %v", err)
 	}
 }
 
-// printFromConnection reads and prints all messages from the connection
+// copyFromConnIntoStdOut reads and prints all messages from the connection
 // until the process is terminated, an error occurs, or the connection is
 // closed.
-func printFromConnection(conn net.Conn) error {
+func copyFromConnIntoStdOut(conn net.Conn) error {
 	fmt.Printf("==== Start of connection read ====\n\n")
-	for {
-		responseBytes := make([]byte, 1000)
-		num, err := conn.Read(responseBytes)
-		if err == io.EOF {
-			fmt.Printf("==== End of connection read ====")
-			conn.Close()
-			return nil
-		}
-		if err != nil {
-			conn.Close()
-			return err
-		}
-		fmt.Printf("read %d bytes\n", num)
-		message := string(responseBytes)
-		fmt.Printf("%s\n\n", message)
+	numBytes, err := io.Copy(os.Stdout, conn)
+	fmt.Printf("\n\n==== End of connection read ====\n")
+	fmt.Printf("total bytes read: %d", numBytes)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("error copying into connection into standard out: %v", err)
 	}
+	return nil
 }

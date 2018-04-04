@@ -30,26 +30,28 @@ type NewUser struct {
 }
 
 func main() {
-	payload := &NewUser{
-		FirstName:    randomdata.FirstName(randomdata.RandomGender),
-		LastName:     randomdata.LastName(),
-		Email:        randomdata.Email(),
-		Bio:          "some bio",
-		Password:     "password",
-		PasswordConf: "password",
-	}
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		log.Fatalf("error marshalling JSON: %v", err)
-	}
-	payloadReader := bytes.NewReader(payloadBytes)
+	for i := 0; i < 10; i++ {
+		payload := &NewUser{
+			FirstName:    randomdata.FirstName(randomdata.RandomGender),
+			LastName:     randomdata.LastName(),
+			Email:        randomdata.Email(),
+			Bio:          "some bio",
+			Password:     "password",
+			PasswordConf: "password",
+		}
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			log.Fatalf("error marshalling JSON: %v", err)
+		}
+		payloadReader := bytes.NewReader(payloadBytes)
 
-	res, err := http.Post(APIURL, "application/json", payloadReader)
-	if err != nil {
-		log.Fatalf("error posting user: %v", err)
+		res, err := http.Post(APIURL, "application/json", payloadReader)
+		if err != nil {
+			log.Fatalf("error posting user: %v", err)
+		}
+		if res.StatusCode >= 400 {
+			log.Fatalf("error response from API: %d:%v", res.StatusCode, res.Status)
+		}
+		io.Copy(os.Stdout, res.Body)
 	}
-	if res.StatusCode >= 400 {
-		log.Fatalf("error response from API: %d:%v", res.StatusCode, res.Status)
-	}
-	io.Copy(os.Stdout, res.Body)
 }

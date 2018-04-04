@@ -80,13 +80,21 @@ func ExecutableHandler(conn net.Conn) error {
 	// Executre the file at the "fp" path
 	// and write its output back to the client.
 	cmd := exec.Command(fp)
-	output, err := cmd.Output()
+	cmd.Stdout = io.MultiWriter(conn, os.Stdout)
 	if err != nil {
-		return write(fmt.Sprintf("error getting program output: %v\n", err), conn)
+		return write(fmt.Sprintf("error getting command stdout pipe: %v\n", err), conn)
 	}
-	write(fmt.Sprintf("application output:\n\n%s", string(output)), conn)
+	err = cmd.Start()
+	if err != nil {
+		return write(fmt.Sprintf("error starting command: %v\n", err), conn)
+	}
+	fmt.Printf("==== Begin program output ====\n\n")
+	err = cmd.Wait()
+	if err != nil {
+		return write(fmt.Sprintf("error waiting for command to finish: %v\n", err), conn)
+	}
+	fmt.Printf("\n\n==== End program output ====\n")
 
-	// write a success message and return the error if
 	// one occurred
 	return write("success!", conn)
 }
