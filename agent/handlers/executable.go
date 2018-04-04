@@ -27,7 +27,7 @@ func ExecutableHandler(conn net.Conn) error {
 	// write some status messages to standard out and to the connection
 	// so we can more easily track what is happening.
 	log.Printf("received connection from %s\n", conn.RemoteAddr().String())
-	write(fmt.Sprintf("connection recieved. saving request bytes as a file...\n"), conn)
+	write(fmt.Sprintf("Connection recieved. Processing request...\n"), conn)
 
 	fp := currentDir() + "/command"
 
