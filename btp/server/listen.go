@@ -18,6 +18,12 @@ func Listen(addr string, handler Handler) error {
 		if err != nil {
 			log.Printf("error accepting connection: %v\n", err)
 		}
-		go handler(conn)
+		w, r, err := fullCycleFromConn(conn)
+		if err != nil {
+			log.Printf("error getting conn lifecycle: %v", err)
+			conn.Close()
+			continue
+		}
+		go handler(w, r)
 	}
 }
