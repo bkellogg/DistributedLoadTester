@@ -9,7 +9,7 @@ import "github.com/BKellogg/DistributedLoadTester/btp/server"
 // Only errors encountered during startup will be returned.
 // Errors encountered during while processing a specific
 // connection during any point in it's lifecycle will not
-// be returned here
+// be returned here.
 //
 // This function is a blocking function and will never exit
 // once properly started.
