@@ -48,17 +48,6 @@ func newReader(size int64, r io.Reader) Reader {
 	return Reader{size: size, reader: r}
 }
 
-// max returns the max value of the given
-// integers. Needed since the math package
-// doesn't implement this for ints, only
-// floats.
-func max(x, y int64) int64 {
-	if x > y {
-		return x
-	}
-	return y
-}
-
 // min returns the min value of the given
 // integers. Needed since the math package
 // doesn't implement this for ints, only
