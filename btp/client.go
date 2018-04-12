@@ -42,18 +42,10 @@ func (rb *RequestBuilder) Send() error {
 		return fmt.Errorf("btp: cannot sent a request that has already been sent")
 	}
 
-	// open the connection to this request builder's
-	// address. Report any errors that occur.
-	conn, err := net.Dial("tcp", rb.address)
-	if err != nil {
-		return fmt.Errorf("btp: error dialing address: %v", rb.address)
-	}
-
 	// open the file of this request builder
 	// report any errors that occur.
 	f, err := os.Open(rb.file)
 	if err != nil {
-		conn.Close()
 		return fmt.Errorf("btp: error opening file: %v", err)
 	}
 
@@ -61,8 +53,14 @@ func (rb *RequestBuilder) Send() error {
 	// report any errors that occur.
 	fstat, err := f.Stat()
 	if err != nil {
-		conn.Close()
 		return fmt.Errorf("btp: error obtaining file statistics: %v", err)
+	}
+
+	// open the connection to this request builder's
+	// address. Report any errors that occur.
+	conn, err := net.Dial("tcp", rb.address)
+	if err != nil {
+		return fmt.Errorf("btp: error dialing address: %v", rb.address)
 	}
 
 	// write the size of the file to the connection
