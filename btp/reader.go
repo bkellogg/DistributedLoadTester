@@ -1,7 +1,6 @@
 package btp
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -22,30 +21,21 @@ type Reader struct {
 // byte slice until either the destination is full, or
 // the number of bytes specified when the reader was
 // created has been hit.
-func (r Reader) Read(dst []byte) (int, error) {
-
-	cummBytesRead := 0
-	chunkSize := 1024
-
-	for int64(cummBytesRead) < r.size {
-		chunk := make([]byte, min(chunkSize, int(r.size)-(cummBytesRead)))
-		numBytes, err := r.reader.Read(chunk)
-		if err != nil {
-			return 0, fmt.Errorf("btp: error reading bytes from connection: %v", err)
-		}
-		copy(dst[cummBytesRead:cummBytesRead+len(chunk)], chunk)
-		cummBytesRead += numBytes
+func (r *Reader) Read(dst []byte) (int, error) {
+	if r.size == 0 {
+		return 0, io.EOF
 	}
-
-	return int(cummBytesRead), io.EOF
+	numBytes, err := r.reader.Read(dst)
+	r.size -= int64(numBytes)
+	return numBytes, err
 }
 
 // newReader creates a new Reader that wraps the given
 // reader. The returned reader will return io.EOF when
 // the source reader is exhausted or the number of bytes
 // read is equal to the given size.
-func newReader(size int64, r io.Reader) Reader {
-	return Reader{size: size, reader: r}
+func newReader(size int64, r io.Reader) *Reader {
+	return &Reader{size: size, reader: r}
 }
 
 // min returns the min value of the given

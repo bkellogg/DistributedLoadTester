@@ -35,22 +35,12 @@ func (r *Request) WritePayloadToFile(fileName, dir string) (string, int64, error
 	}
 	defer f.Close()
 
-	temp := make([]byte, r.PayloadSize)
-	numBytes, err := r.Payload.Read(temp)
-	if err != nil && err != io.EOF {
-		return "", -1, fmt.Errorf("btp: error reading bytes: %v", err)
-	}
-
-	numBytes, err = f.Write(temp)
+	// Copy the bytes from the request payload into
+	// the file that was just created.
+	numBytes, err := io.Copy(f, r.Payload)
 	if err != nil {
-		return "", -1, fmt.Errorf("btp: error writing bytes to file: %v", err)
+		return "", 0, fmt.Errorf("btp: error copying bytes from payload to file: %v", err)
 	}
-
-	// TODO: io.Copy panics
-	// numBytes, err := io.Copy(f, r.Payload)
-	// if err != nil {
-	// 	return "", 0, fmt.Errorf("btp: error copying bytes from payload to file: %v", err)
-	// }
 
 	return dir + "/" + fileName, int64(numBytes), err
 }
@@ -72,14 +62,7 @@ func requestFromConn(conn net.Conn) (*Request, error) {
 // functionality that a btp server has to respond
 // to a client.
 type ResponseWriter struct {
-	client io.Writer
-}
-
-// Write writes the given []byte to the client.
-// Returns the number of bytes written and an
-// error if one occurred.
-func (rw ResponseWriter) Write(p []byte) (int, error) {
-	return rw.client.Write(p)
+	io.Writer
 }
 
 // WriteString writes the string to the given response
@@ -92,7 +75,7 @@ func (rw ResponseWriter) WriteString(p string) (int, error) {
 // resWriterFromConn returns a ResponseWriter that
 // is associated with the given net.Conn.
 func resWriterFromConn(conn net.Conn) ResponseWriter {
-	return ResponseWriter{client: conn}
+	return ResponseWriter{Writer: conn}
 }
 
 // fullCycleFromConn returns a ResponseWriter and a Request that
