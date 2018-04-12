@@ -34,7 +34,7 @@ func TestNewReader(t *testing.T) {
 
 func TestRead(t *testing.T) {
 	cases := []struct {
-		reader        Reader
+		reader        *Reader
 		expectedBytes []byte
 	}{
 		{
@@ -79,44 +79,5 @@ func TestRead(t *testing.T) {
 			t.Fatalf("input %s did not match %s output", stringIn, stringOut)
 		}
 
-	}
-}
-
-func TestMin(t *testing.T) {
-	cases := []struct {
-		x        int64
-		y        int64
-		expected int64
-	}{
-		{
-			10,
-			15,
-			10,
-		},
-		{
-			-10,
-			10,
-			-10,
-		},
-		{
-			1,
-			1,
-			1,
-		},
-		{
-			1000032378430,
-			-10480934802304,
-			-10480934802304,
-		},
-		{
-			-1023,
-			-1390132,
-			-1390132,
-		},
-	}
-	for _, c := range cases {
-		if res := min(c.x, c.y); res != c.expected {
-			t.Fatalf("min failed: expected %d, got %d", c.expected, res)
-		}
 	}
 }

@@ -30,7 +30,7 @@ func TestRWWrite(t *testing.T) {
 	}
 	for _, c := range cases {
 		var b bytes.Buffer
-		rw := ResponseWriter{client: &b}
+		rw := ResponseWriter{Writer: &b}
 		payloadLength := len(c.payload)
 
 		numWritten, err := rw.Write(c.payload)
